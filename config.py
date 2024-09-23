@@ -22,4 +22,4 @@ REPLACE_PATTERNS = {
 }
 
 # 모니터링 관련 설정
-MONITOR_INTERVAL = 5000  # 밀리초 단위
+MONITOR_INTERVAL = 30000  # 30초

@@ -6,12 +6,14 @@ import logging
 from chat_message import ChatMessage
 from config import REPLACE_PATTERNS, FILE_ENCODING, CHAT_MESSAGE_PATTERN, SENDER_ADDRESS_PATTERN, FILE_PREFIX_FORMAT
 
+logger = logging.getLogger(__name__)
+
 def read_file_content(filename):
     try:
         with open(filename, 'r', encoding=FILE_ENCODING) as file:
             return file.readlines()
     except Exception as e:
-        logging.error(f"파일 읽기 오류 ({filename}): {str(e)}")
+        logger.error(f"파일 읽기 오류 ({filename}): {str(e)}")
         return []
 
 def parse_chat_message(line):
@@ -81,6 +83,6 @@ def process_files(offsets):
                 if new_messages:
                     all_new_messages[normalized_filename] = new_messages
                     offsets[prefix] = new_offset
-                    logging.info(f"{normalized_filename}에서 {len(new_messages)}개의 새 메시지를 발견했습니다.")
+                    logger.info(f"{normalized_filename}에서 {len(new_messages)}개의 새 메시지를 발견했습니다.")
     
     return all_new_messages

@@ -4,6 +4,8 @@ from datetime import datetime
 import logging
 from config import API_BASE_URL, LOGIN_ENDPOINT, CHAT_ENDPOINT
 
+logger = logging.getLogger(__name__)
+
 def login(username, password):
     url = f"{API_BASE_URL}{LOGIN_ENDPOINT}"
     headers = {"Content-Type": "application/json"}
@@ -17,7 +19,7 @@ def login(username, password):
         response.raise_for_status()
         return response.json().get("token")
     except requests.exceptions.RequestException as e:
-        logging.error(f"로그인 실패: {str(e)}")
+        logger.error(f"로그인 실패: {str(e)}")
         return None
 
 def send_messages_to_api(messages, token):
@@ -44,6 +46,6 @@ def send_messages_to_api(messages, token):
     try:
         response = requests.post(url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
-        logging.info(f"API로 {len(messages)}개의 메시지를 성공적으로 전송했습니다.")
+        logger.info(f"{len(messages)}개의 메시지를 성공적으로 전송했습니다.")
     except requests.exceptions.RequestException as e:
-        logging.error(f"API 전송 실패: {str(e)}")
+        logger.error(f"API 전송 실패: {str(e)}")
