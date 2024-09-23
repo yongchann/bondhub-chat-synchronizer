@@ -17,7 +17,7 @@ jobs:
           pip install -r requirements.txt
       - name: Build with PyInstaller
         run: pyinstaller --onefile --windowed --name FileMonitorApp main.py
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: FileMonitorApp
           path: dist/FileMonitorApp.exe
