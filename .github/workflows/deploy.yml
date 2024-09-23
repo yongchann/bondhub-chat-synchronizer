@@ -1,0 +1,23 @@
+name: Build
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - name: Install dependencies
+        run: |
+          pip install pyinstaller
+          pip install -r requirements.txt
+      - name: Build with PyInstaller
+        run: pyinstaller --onefile --windowed --name FileMonitorApp main.py
+      - uses: actions/upload-artifact@v2
+        with:
+          name: FileMonitorApp
+          path: dist/FileMonitorApp.exe
