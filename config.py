@@ -1,9 +1,9 @@
-import re
+import re, os
 
 # API 관련 설정
-API_BASE_URL = "http://localhost:8080/api/v1"
-LOGIN_ENDPOINT = "/login"
-CHAT_ENDPOINT = "/chat/recent"
+API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8080')
+LOGIN_ENDPOINT = "/api/v1/login"
+CHAT_ENDPOINT = "/api/v1/chat/recent"
 
 # 파일 처리 관련 설정
 FILE_ENCODING = 'euc-kr'
