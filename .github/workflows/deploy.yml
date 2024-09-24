@@ -16,10 +16,8 @@ jobs:
           pip install pyinstaller
           pip install -r requirements.txt
       - name: Build with PyInstaller
-        run: pyinstaller --onefile --windowed --name FileMonitorApp main.py
-        env:
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}  # GitHub Secrets에서 가져오기
+        run: pyinstaller --onefile --windowed --name OTCRUNNER main.py
       - uses: actions/upload-artifact@v3
         with:
-          name: FileMonitorApp
-          path: dist/FileMonitorApp.exe
+          name: OTCRUNNER
+          path: dist/OTCRUNNER.exe
