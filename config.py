@@ -1,7 +1,7 @@
 import re, os
 
 # API 관련 설정
-API_BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:8080')
+API_BASE_URL = 'http://3.36.90.23:8080'
 LOGIN_ENDPOINT = "/api/v1/login"
 CHAT_ENDPOINT = "/api/v1/chat/recent"
 
