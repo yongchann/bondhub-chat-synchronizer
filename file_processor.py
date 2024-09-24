@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def read_file_content(filename):
     try:
-        with open(filename, 'r', encoding=FILE_ENCODING) as file:
+        with open(filename, 'r', encoding=FILE_ENCODING, errors='ignore') as file:
             return file.readlines()
     except Exception as e:
         logger.error(f"파일 읽기 오류 ({filename}): {str(e)}")
