@@ -26,7 +26,7 @@ def parse_chat_message(line):
 
 def clean_content(content):
     for pattern, replacement in REPLACE_PATTERNS.items():
-        content = re.sub(pattern, replacement, content)
+        content = content.replace(pattern, replacement)
     return content.strip()
 
 def extract_sender_address(content):
