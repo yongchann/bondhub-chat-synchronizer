@@ -17,10 +17,10 @@ def read_file_content(filename):
         return []
 
 def parse_chat_message(line):
+    line = clean_content(line)
     match = CHAT_MESSAGE_PATTERN.match(line)
     if match:
         sender, timestamp, content = match.groups()
-        content = clean_content(content)
         return ChatMessage(sender, timestamp, content, "")
     return None
 
