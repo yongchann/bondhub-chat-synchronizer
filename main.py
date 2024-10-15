@@ -5,7 +5,7 @@ from log_config import setup_logging
 
 if __name__ == '__main__':
     logger = setup_logging()
-    logger.info("OTC Bridge Runner 가 실행됩니다.")
+    logger.info("BondHub Chat Synchronizer start")
     app = QApplication(sys.argv)
     ex = FileMonitorApp()
     ex.show()

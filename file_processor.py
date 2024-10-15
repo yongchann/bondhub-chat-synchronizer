@@ -8,6 +8,11 @@ from config import REPLACE_PATTERNS, FILE_ENCODING, CHAT_MESSAGE_PATTERN, SENDER
 
 logger = logging.getLogger(__name__)
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+seoul_now = datetime.now(ZoneInfo("Asia/Seoul"))
+formatted_date = seoul_now.strftime("%Y-%m-%d")
+
 def read_file_content(filename):
     try:
         with open(filename, 'r', encoding=FILE_ENCODING, errors='ignore') as file:
@@ -20,8 +25,8 @@ def parse_chat_message(line):
     line = clean_content(line)
     match = CHAT_MESSAGE_PATTERN.match(line)
     if match:
-        sender, timestamp, content = match.groups()
-        return ChatMessage(sender, timestamp, content, "")
+        sender, send_time, content = match.groups()
+        return ChatMessage(sender, formatted_date, send_time, content, "")
     return None
 
 def clean_content(content):

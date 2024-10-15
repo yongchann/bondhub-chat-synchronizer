@@ -86,7 +86,7 @@ class FileMonitorApp(QWidget):
             # self.log_new_messages(new_messages)
             for filename, messages in new_messages.items():
                 if messages:
-                    self.log_area.append(f"✅ {filename} 파일의 ({messages[-1].timestamp}) 에 생성된 채팅까지 업데이트 되었습니다.\n{messages[-1].content}\n")
+                    self.log_area.append(f"✅ {filename} 파일의 ({messages[-1].send_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{messages[-1].content}\n")
             all_messages = [msg for msgs in new_messages.values() for msg in msgs]
             send_messages_to_api(all_messages, self.token)
         else:
