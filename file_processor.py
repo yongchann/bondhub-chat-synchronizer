@@ -22,7 +22,6 @@ def read_file_content(filename):
         return []
 
 def parse_chat_message(line):
-    line = clean_content(line)
     match = CHAT_MESSAGE_PATTERN.match(line)
     if match:
         sender, send_time, content = match.groups()
@@ -51,6 +50,7 @@ def process_chat_lines(lines):
         new_message = parse_chat_message(line)
         if new_message:
             if current_message:
+                current_message.content = clean_content(current_message.content)
                 current_message.content, current_message.sender_address = extract_sender_address(current_message.content)
                 chat_messages.append(current_message)
             current_message = new_message
@@ -58,6 +58,7 @@ def process_chat_lines(lines):
             current_message.content += " " + line
     
     if current_message:
+        current_message.content = clean_content(current_message.content)
         current_message.content, current_message.sender_address = extract_sender_address(current_message.content)
         chat_messages.append(current_message)
     
