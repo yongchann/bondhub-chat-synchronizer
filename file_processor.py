@@ -24,42 +24,33 @@ def read_file_content(filename):
 def parse_chat_message(line):
     match = CHAT_MESSAGE_PATTERN.match(line)
     if match:
-        sender, send_time, content = match.groups()
-        return ChatMessage(sender, formatted_date+'T'+send_time, content, "")
+        sender, send_time, content, address = match.groups()
+        if send_time == None:
+            return None
+        return ChatMessage(sender, formatted_date+'T'+send_time, content, address)
     return None
 
-def clean_content(content):
+def adjust_replace_rule(content):
     for pattern, replacement in REPLACE_PATTERNS.items():
         content = content.replace(pattern, replacement)
     return content.strip()
-
-def extract_sender_address(content):
-    address_match = SENDER_ADDRESS_PATTERN.search(content)
-    if address_match:
-        sender_address = address_match.group().strip()
-        content = SENDER_ADDRESS_PATTERN.sub("", content).strip()
-        return content, sender_address
-    return content, ""
 
 def process_chat_lines(lines):
     chat_messages = []
     current_message = None
 
     for line in lines:
-        line = line.strip()
+        line = adjust_replace_rule(line)
         new_message = parse_chat_message(line)
-        if new_message:
-            if current_message:
-                current_message.content = clean_content(current_message.content)
-                current_message.content, current_message.sender_address = extract_sender_address(current_message.content)
+        
+        if new_message: 
+            if current_message and len(current_message.content) >= 1:
                 chat_messages.append(current_message)
             current_message = new_message
-        elif current_message:
+        elif current_message and len(current_message.content.strip())>0:
             current_message.content += " " + line
     
-    if current_message:
-        current_message.content = clean_content(current_message.content)
-        current_message.content, current_message.sender_address = extract_sender_address(current_message.content)
+    if current_message and len(current_message.content) >= 1:
         chat_messages.append(current_message)
     
     return chat_messages
