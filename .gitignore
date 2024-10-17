@@ -2,4 +2,4 @@
 myenv/**
 __pycache__/**
 .vscode/**
-otclogs/**
+bondhub/**

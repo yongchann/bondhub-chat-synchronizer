@@ -19,7 +19,7 @@ class FileMonitorApp(QWidget):
         self.timer.timeout.connect(self.check_files)
 
     def initUI(self):
-        self.setWindowTitle('OTC Bridge Runner')
+        self.setWindowTitle('BondHub Chat Synchronizer')
         self.setGeometry(100, 100, 900, 700)
 
         layout = QVBoxLayout()
@@ -41,7 +41,7 @@ class FileMonitorApp(QWidget):
         layout.addLayout(login_layout)
 
         # 상태 표시 레이블
-        self.status_label = QLabel('Welcome to OTC Runner', self)
+        self.status_label = QLabel('BondHub Chat Synchronizer', self)
         layout.addWidget(self.status_label)
 
         # 시작/정지 버튼

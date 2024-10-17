@@ -4,7 +4,7 @@ from logging.handlers import RotatingFileHandler
 
 def setup_logging(log_file='app.log', log_level=logging.INFO):
     # 로그 디렉토리 생성 (존재하지 않는 경우)
-    log_dir = 'otclogs'
+    log_dir = 'bondhub/log'
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
     
