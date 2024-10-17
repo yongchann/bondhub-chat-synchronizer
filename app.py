@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTex
 from PyQt5.QtCore import QTimer
 from api_client import login, send_messages_to_api
 from file_processor import process_files
+from chat_processor import process_duplication
 from config import MONITOR_INTERVAL
 import logging
 from datetime import datetime
@@ -81,13 +82,13 @@ class FileMonitorApp(QWidget):
     def check_files(self):
         self.log_area.append(f"================================{datetime.now().strftime('%Y-%m-%d %H시 %M분 %S초')}================================\n")
         
-        new_messages = process_files(self.offsets)
-        if new_messages:
+        new_chats = process_files(self.offsets)
+        if new_chats:
             # self.log_new_messages(new_messages)
-            for filename, messages in new_messages.items():
-                if messages:
-                    self.log_area.append(f"✅ {filename} 파일의 ({messages[-1].chat_date_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{messages[-1].content}\n")
-            all_messages = [msg for msgs in new_messages.values() for msg in msgs]
-            send_messages_to_api(all_messages, self.token)
+            for filename, chats in new_chats.items():
+                if chats:
+                    self.log_area.append(f"✅ {filename} 파일의 ({chats[-1].chat_date_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{chats[-1].content}\n")
+            entire_chats = [msg for msgs in new_chats.values() for msg in msgs]
+            send_messages_to_api(process_duplication(entire_chats), self.token)
         else:
             self.log_area.append(f"💬 새 메시지가 없습니다.\n")

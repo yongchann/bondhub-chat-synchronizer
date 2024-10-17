@@ -1,4 +1,4 @@
-class ChatMessage:
+class Chat:
     def __init__(self, sender, chat_date_time, content, sender_address):
         self.sender = sender
         self.chat_date_time = chat_date_time

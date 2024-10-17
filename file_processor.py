@@ -1,17 +1,14 @@
 import os
-import re
 from datetime import datetime
 from unicodedata import normalize
 import logging
-from chat_message import ChatMessage
-from config import REPLACE_PATTERNS, FILE_ENCODING, CHAT_MESSAGE_PATTERN, SENDER_ADDRESS_PATTERN, FILE_PREFIX_FORMAT
+from chat_processor import process_chat_lines
 
 logger = logging.getLogger(__name__)
 
-from datetime import datetime
-from zoneinfo import ZoneInfo
-seoul_now = datetime.now(ZoneInfo("Asia/Seoul"))
-formatted_date = seoul_now.strftime("%Y-%m-%d")
+# 파일 처리 관련 설정
+FILE_ENCODING = 'euc-kr'
+FILE_PREFIX_FORMAT = "{prefix}_{date}"
 
 def read_file_content(filename):
     try:
@@ -20,40 +17,6 @@ def read_file_content(filename):
     except Exception as e:
         logger.error(f"파일 읽기 오류 ({filename}): {str(e)}")
         return []
-
-def parse_chat_message(line):
-    match = CHAT_MESSAGE_PATTERN.match(line)
-    if match:
-        sender, send_time, content, address = match.groups()
-        if send_time == None:
-            return None
-        return ChatMessage(sender, formatted_date+'T'+send_time, content, address)
-    return None
-
-def adjust_replace_rule(content):
-    for pattern, replacement in REPLACE_PATTERNS.items():
-        content = content.replace(pattern, replacement)
-    return content.strip()
-
-def process_chat_lines(lines):
-    chat_messages = []
-    current_message = None
-
-    for line in lines:
-        line = adjust_replace_rule(line)
-        new_message = parse_chat_message(line)
-        
-        if new_message: 
-            if current_message and len(current_message.content) >= 1:
-                chat_messages.append(current_message)
-            current_message = new_message
-        elif current_message and len(current_message.content.strip())>0:
-            current_message.content += " " + line
-    
-    if current_message and len(current_message.content) >= 1:
-        chat_messages.append(current_message)
-    
-    return chat_messages
 
 def process_file(filename, prefix, current_offset):
     lines = read_file_content(filename)

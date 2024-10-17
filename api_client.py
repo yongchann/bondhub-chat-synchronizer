@@ -2,9 +2,12 @@ import requests
 import json
 from datetime import datetime
 import logging
-from config import API_BASE_URL, LOGIN_ENDPOINT, CHAT_ENDPOINT
+from config import API_BASE_URL
 
 logger = logging.getLogger(__name__)
+
+LOGIN_ENDPOINT = "/api/v1/login"
+CHAT_ENDPOINT = "/api/v1/chat/recent"
 
 def login(username, password):
     url = f"{API_BASE_URL}{LOGIN_ENDPOINT}"
