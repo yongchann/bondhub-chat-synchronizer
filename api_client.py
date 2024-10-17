@@ -32,8 +32,7 @@ def send_messages_to_api(messages, token):
     recent_chats = [
         {
             "senderName": msg.sender,
-            "chatDate": msg.chat_date,
-            "sendTime": msg.send_time,
+            "chatDateTime": msg.chat_date_time,
             "content": msg.content,
             "senderAddress": msg.sender_address
         } for msg in messages
@@ -41,7 +40,7 @@ def send_messages_to_api(messages, token):
     
     payload = {
         "chatDate": chat_date,
-        "recentChats": recent_chats
+        "chats": recent_chats
     }
     
     try:

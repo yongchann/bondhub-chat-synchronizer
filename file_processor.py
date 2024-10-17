@@ -26,7 +26,7 @@ def parse_chat_message(line):
     match = CHAT_MESSAGE_PATTERN.match(line)
     if match:
         sender, send_time, content = match.groups()
-        return ChatMessage(sender, formatted_date, send_time, content, "")
+        return ChatMessage(sender, formatted_date+'T'+send_time, content, "")
     return None
 
 def clean_content(content):
