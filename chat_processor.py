@@ -1,11 +1,12 @@
 import re
 from chat import Chat
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timezone, timedelta
 from operator import attrgetter
 from itertools import groupby
 
-formatted_date = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+utc_time = datetime.now(timezone.utc)
+seoul_time = utc_time + timedelta(hours=9)
+formatted_date = seoul_time.strftime("%Y-%m-%d")
 
 CHAT_MESSAGE_PATTERN = re.compile(r'^([\w\s.가-힣()\u4e00-\u9fff]+) \((\d{2}:\d{2}:\d{2})\) :\s*(.*?)(?:\s*((?:\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}|<[^<>]*>|▨[^▨]*▨|【[^【】]*】)))?\s*$', re.UNICODE)
 NEW_CHAT_PATTERN = re.compile(r'\((\d{2}:\d{2}:\d{2})\)')
