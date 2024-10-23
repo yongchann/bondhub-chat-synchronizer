@@ -10,6 +10,8 @@ formatted_date = seoul_time.strftime("%Y-%m-%d")
 
 CHAT_MESSAGE_PATTERN = re.compile(r'^([\w\s.가-힣()\u4e00-\u9fff]+) \((\d{2}:\d{2}:\d{2})\) :\s*(.*?)(?:\s*((?:\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}|<[^<>]*>|▨[^▨]*▨|【[^【】]*】)))?\s*$', re.UNICODE)
 NEW_CHAT_PATTERN = re.compile(r'\((\d{2}:\d{2}:\d{2})\)')
+YIELD_PATTERN = re.compile(r'민\s*(?:평\s*)?[:~]?\s*(\d\.\d{2,3})(?:\s*[,/]|[)])?')
+
 REPLACE_PATTERNS = {
     "[부국채영]368-9532": "[부국채영 368-9532]",
     "(DS투자증권 채권전략팀 02)709-2701)": "(DS투자증권 채권전략팀 02-709-2701)",
@@ -26,11 +28,18 @@ def process_duplication(chats):
     
     return [max(group, key=attrgetter('chat_date_time')) for _, group in grouped]
 
+def extract_bond_yield(content):
+    matches = YIELD_PATTERN.findall(content)
+    if len(matches) > 0:
+        return matches[0]
+    return ''
+        
 def parse_chat_message(line):
     if match := CHAT_MESSAGE_PATTERN.match(line):
         sender, send_time, content, address = match.groups()
         if send_time and content.strip():
-            return Chat(sender, formatted_date+'T'+send_time, content, address)
+            bond_yield = extract_bond_yield(content)
+            return Chat(sender, formatted_date+'T'+send_time, content, bond_yield, address)
     return None
 
 def adjust_replace_rule(content):
