@@ -23,7 +23,7 @@ def process_file(filename, prefix, current_offset):
     new_lines = lines[current_offset:]
     new_messages = process_chat_lines(new_lines)
     new_offset = len(lines)
-    return new_messages, new_offset
+    return new_messages, new_offset, current_offset  # 현재 오프셋도 반환
 
 def process_files(offsets):
     today = datetime.now().strftime("%Y%m%d")
@@ -33,16 +33,17 @@ def process_files(offsets):
     ]
     
     all_new_messages = {}
+    file_offsets = {}  # 파일별 오프셋 정보를 임시 저장
     
     for filename in os.listdir('.'):
         normalized_filename = normalize('NFC', filename)
         for prefix in file_prefixes:
             if normalized_filename.startswith(prefix) and normalized_filename.endswith('.txt'):
                 current_offset = offsets.get(prefix, 0)
-                new_messages, new_offset = process_file(filename, prefix, current_offset)
+                new_messages, new_offset, curr_offset = process_file(filename, prefix, current_offset)
                 if new_messages:
                     all_new_messages[normalized_filename] = new_messages
-                    offsets[prefix] = new_offset
+                    file_offsets[prefix] = (new_offset, curr_offset)  # 새 오프셋과 현재 오프셋을 저장
                     logger.info(f"{normalized_filename}에서 {len(new_messages)}개의 새 메시지를 발견했습니다.")
     
-    return all_new_messages
+    return all_new_messages, file_offsets

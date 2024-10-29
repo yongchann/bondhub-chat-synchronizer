@@ -82,13 +82,23 @@ class FileMonitorApp(QWidget):
     def check_files(self):
         self.log_area.append(f"================================{datetime.now().strftime('%Y-%m-%d %H시 %M분 %S초')}================================\n")
         
-        new_chats = process_files(self.offsets)
+        new_chats, file_offsets = process_files(self.offsets)
         if new_chats:
-            # self.log_new_messages(new_messages)
-            for filename, chats in new_chats.items():
-                if chats:
-                    self.log_area.append(f"✅ {filename} 파일의 ({chats[-1].chat_date_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{chats[-1].content}\n")
             entire_chats = [msg for msgs in new_chats.values() for msg in msgs]
-            send_messages_to_api(process_duplication(entire_chats), self.token)
+            processed_chats = process_duplication(entire_chats)
+            
+            # API 호출 및 성공 여부에 따른 오프셋 업데이트
+            try:
+                send_messages_to_api(processed_chats, self.token)
+                # API 호출이 성공한 경우에만 오프셋 업데이트
+                for prefix, (new_offset, _) in file_offsets.items():
+                    self.offsets[prefix] = new_offset
+                    
+                for filename, chats in new_chats.items():
+                    if chats:
+                        self.log_area.append(f"✅ {filename} 파일의 ({chats[-1].chat_date_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{chats[-1].content}\n")
+            except Exception as e:
+                logger.error(f"API 호출 실패로 오프셋이 업데이트되지 않았습니다: {str(e)}")
+                self.log_area.append(f"❌ API 호출 실패로 오프셋이 업데이트되지 않았습니다: {str(e)}\n")
         else:
             self.log_area.append(f"💬 새 메시지가 없습니다.\n")

@@ -53,3 +53,4 @@ def send_messages_to_api(messages, token):
         logger.info(f"{len(messages)}개의 메시지를 성공적으로 전송했습니다.")
     except requests.exceptions.RequestException as e:
         logger.error(f"API 전송 실패: {str(e)}")
+        raise
