@@ -20,7 +20,7 @@ def login(username, password):
     try:
         response = requests.post(url, headers=headers, data=json.dumps(payload))
         response.raise_for_status()
-        return response.json().get("token")
+        return response.json().get("data").get("token")
     except requests.exceptions.RequestException as e:
         logger.error(f"로그인 실패: {str(e)}")
         return None
