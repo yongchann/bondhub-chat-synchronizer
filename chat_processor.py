@@ -38,8 +38,7 @@ def parse_chat_message(line):
     if match := CHAT_MESSAGE_PATTERN.match(line):
         sender, send_time, content, address = match.groups()
         if send_time and content.strip():
-            bond_yield = extract_bond_yield(content)
-            return Chat(sender, formatted_date+'T'+send_time, content, bond_yield, address)
+            return Chat(sender, formatted_date+'T'+send_time, content, address)
     return None
 
 def adjust_replace_rule(content):

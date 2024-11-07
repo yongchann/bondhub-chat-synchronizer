@@ -37,7 +37,6 @@ def send_messages_to_api(messages, token):
             "senderName": msg.sender,
             "chatDateTime": msg.chat_date_time,
             "content": msg.content,
-            "yield": msg.bond_yield,
             "senderAddress": msg.sender_address
         } for msg in messages
     ]
