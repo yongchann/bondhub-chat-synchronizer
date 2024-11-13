@@ -85,11 +85,10 @@ class FileMonitorApp(QWidget):
         new_chats, file_offsets = process_files(self.offsets)
         if new_chats:
             entire_chats = [msg for msgs in new_chats.values() for msg in msgs]
-            processed_chats = process_duplication(entire_chats)
             
             # API 호출 및 성공 여부에 따른 오프셋 업데이트
             try:
-                send_messages_to_api(processed_chats, self.token)
+                send_messages_to_api(entire_chats, self.token)
                 # API 호출이 성공한 경우에만 오프셋 업데이트
                 for prefix, (new_offset, _) in file_offsets.items():
                     self.offsets[prefix] = new_offset
