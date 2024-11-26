@@ -1,7 +1,7 @@
 import logging
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QLineEdit
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QLineEdit, QCalendarWidget
 from PyQt5.QtCore import QTimer
-from api_client import login, send_messages_to_api
+from api_client import login, append, check_status
 from file_processor import process_files
 from chat_processor import process_duplication
 from config import MONITOR_INTERVAL
@@ -15,7 +15,6 @@ class FileMonitorApp(QWidget):
         super().__init__()
         self.initUI()
         self.offsets = {}
-        self.token = None
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.check_files)
 
@@ -44,6 +43,9 @@ class FileMonitorApp(QWidget):
         # 상태 표시 레이블
         self.status_label = QLabel('BondHub Chat Synchronizer', self)
         layout.addWidget(self.status_label)
+        
+        self.calendar = QCalendarWidget(self)
+        layout.addWidget(self.calendar)
 
         # 시작/정지 버튼
         self.toggle_button = QPushButton('RUN!', self)
@@ -61,35 +63,46 @@ class FileMonitorApp(QWidget):
     def login(self):
         username = self.username_input.text()
         password = self.password_input.text()
-        self.token = login(username, password)
-        if self.token:
-            self.status_label.setText("Press RUN!")
-            self.toggle_button.setEnabled(True)
-        else:
-            self.status_label.setText("Login Failed.")
+        if username and password:
+            result = login(username, password)
+            if result:
+                self.status_label.setText("Press RUN!")
+                self.toggle_button.setEnabled(True)
+            else:
+                self.status_label.setText("Login Failed.")
 
     def toggle_monitoring(self):
         if self.timer.isActive():
             self.timer.stop()
             self.toggle_button.setText('RUN!')
             self.status_label.setText('stopped...')
-        else:
-            self.check_files()
-            self.timer.start(MONITOR_INTERVAL)
-            self.toggle_button.setText('Stop Running')
-            self.status_label.setText('running...')
+        elif self.check_status():
+                self.check_files()
+                self.timer.start(MONITOR_INTERVAL)
+                self.toggle_button.setText('Stop Running')
+                self.status_label.setText('running...')
+
+    def check_status(self):
+        selected_date = self.calendar.selectedDate()
+        chat_date = selected_date.toString("yyyy-MM-dd")
+        count = check_status(chat_date)
+        if count < 1:
+            self.log_area.append(f"{chat_date} 일자의 채권 가격을 먼저 업로드 해주세요.\n")
+            return False
+        return True
 
     def check_files(self):
         self.log_area.append(f"================================{datetime.now().strftime('%Y-%m-%d %H시 %M분 %S초')}================================\n")
         
-        new_chats, file_offsets = process_files(self.offsets)
+        chat_date = self.calendar.selectedDate().toString("yyyy-MM-dd")
         
+        new_chats, file_offsets = process_files(self.offsets, chat_date)
         if new_chats:
             entire_chats = [msg for msgs in new_chats.values() for msg in msgs]
-            # distinct_chats = process_duplication(entire_chats)
+            distinct_chats = process_duplication(entire_chats)
             # API 호출 및 성공 여부에 따른 오프셋 업데이트
             try:
-                send_messages_to_api(entire_chats, self.token)
+                append(chat_date, distinct_chats)
                 # API 호출이 성공한 경우에만 오프셋 업데이트
                 for prefix, (new_offset, _) in file_offsets.items():
                     self.offsets[prefix] = new_offset

@@ -1,5 +1,4 @@
 import os
-from datetime import datetime
 from unicodedata import normalize
 import logging
 from chat_processor import process_chat_lines
@@ -18,17 +17,17 @@ def read_file_content(filename):
         logger.error(f"파일 읽기 오류 ({filename}): {str(e)}")
         return []
 
-def process_file(filename, prefix, current_offset):
+def process_file(filename, prefix, current_offset, chat_date):
     lines = read_file_content(filename)
     new_lines = lines[current_offset:]
-    new_messages = process_chat_lines(new_lines)
+    new_messages = process_chat_lines(new_lines, chat_date)
     new_offset = len(lines)
     return new_messages, new_offset, current_offset  # 현재 오프셋도 반환
 
-def process_files(offsets):
-    today = datetime.now().strftime("%Y%m%d")
+def process_files(offsets, chat_date):
+    fileDate = chat_date.replace('-', '')
     file_prefixes = [
-        normalize('NFC', FILE_PREFIX_FORMAT.format(prefix=prefix, date=today))
+        normalize('NFC', FILE_PREFIX_FORMAT.format(prefix=prefix, date=fileDate))
         for prefix in ["채권_블커본드", "채권_레드본드", "채권_막무가내"]
     ]
     
@@ -40,7 +39,7 @@ def process_files(offsets):
         for prefix in file_prefixes:
             if normalized_filename.startswith(prefix) and normalized_filename.endswith('.txt'):
                 current_offset = offsets.get(prefix, 0)
-                new_messages, new_offset, curr_offset = process_file(filename, prefix, current_offset)
+                new_messages, new_offset, curr_offset = process_file(filename, prefix, current_offset, chat_date)
                 if new_messages:
                     all_new_messages[normalized_filename] = new_messages
                     file_offsets[prefix] = (new_offset, curr_offset)  # 새 오프셋과 현재 오프셋을 저장

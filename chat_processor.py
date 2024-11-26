@@ -1,12 +1,7 @@
 import re
 from chat import Chat
-from datetime import datetime, timezone, timedelta
 from operator import attrgetter
 from itertools import groupby
-
-utc_time = datetime.now(timezone.utc)
-seoul_time = utc_time + timedelta(hours=9)
-formatted_date = seoul_time.strftime("%Y-%m-%d")
 
 CHAT_MESSAGE_PATTERN = re.compile(r'^([\w\s.가-힣()\u4e00-\u9fff]+) \((\d{2}:\d{2}:\d{2})\) :\s*(.*?)(?:\s*((?:\([^()]*\)|\[[^[\]]*\]|\{[^{}]*\}|<[^<>]*>|▨[^▨]*▨|【[^【】]*】)))?\s*$', re.UNICODE)
 NEW_CHAT_PATTERN = re.compile(r'\((\d{2}:\d{2}:\d{2})\)')
@@ -20,13 +15,12 @@ REPLACE_PATTERNS = {
     "[케이프 인수금융팀 02-6923-7656": "[케이프 인수금융팀 02-6923-7656]"
 }
 
-
 def process_duplication(chats):
     sorted_chats = sorted(chats, key=attrgetter('content', 'sender', 'chat_date_time'))
     
     grouped = groupby(sorted_chats, key=attrgetter('content', 'sender'))
     
-    return [max(group, key=attrgetter('chat_date_time')) for _, group in grouped]
+    return [min(group, key=attrgetter('chat_date_time')) for _, group in grouped]
 
 def extract_bond_yield(content):
     matches = YIELD_PATTERN.findall(content)
@@ -34,11 +28,11 @@ def extract_bond_yield(content):
         return matches[0]
     return ''
         
-def parse_chat_message(line):
+def parse_chat_message(line, chat_date):
     if match := CHAT_MESSAGE_PATTERN.match(line):
         sender, send_time, content, address = match.groups()
         if send_time and content.strip():
-            return Chat(sender, formatted_date+'T'+send_time, content, address)
+            return Chat(sender, chat_date+'T'+send_time, content, address)
     return None
 
 def adjust_replace_rule(content):
@@ -49,14 +43,14 @@ def adjust_replace_rule(content):
 def is_new_chat(line):
     return bool(NEW_CHAT_PATTERN.search(line))    
 
-def process_chat_lines(lines):
+def process_chat_lines(lines, chat_date):
     chats = []
     current_text = ""
 
     for line in map(adjust_replace_rule, lines):
         if is_new_chat(line):
             if current_text:
-                parsed_chat = parse_chat_message(current_text.strip())
+                parsed_chat = parse_chat_message(current_text.strip(), chat_date)
                 if parsed_chat:
                     chats.append(parsed_chat)
             current_text = line
@@ -64,7 +58,7 @@ def process_chat_lines(lines):
             current_text += ' ' + line
     
     if current_text:
-        parsed_chat = parse_chat_message(current_text.strip())
+        parsed_chat = parse_chat_message(current_text.strip(), chat_date)
         if parsed_chat:
             chats.append(parsed_chat)
         
