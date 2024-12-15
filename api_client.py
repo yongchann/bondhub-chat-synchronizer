@@ -4,13 +4,7 @@ import logging
 from config import API_BASE_URL
 
 logger = logging.getLogger(__name__)
-
-LOGIN_ENDPOINT = "/api/v1/login"
-CHAT_ENDPOINT = "/api/v1/chat/recent"
-CHECK_ENDPOINT = "/api/v1/bond/price/status"
-
 token = ""
-
 
 def get(url, params):
     url = f"{API_BASE_URL}{url}"
@@ -59,33 +53,39 @@ def login(username, password):
         "password": password
     }
     
-    result = post(LOGIN_ENDPOINT, params=None, payload=payload)
-    print(result)
-    
+    result = post("/api/v1/login", params=None, payload=payload)
     global token
+    
     token = result.get('token')
     if not token:
         return False
     return True
 
-def append(chat_date, messages):
-    payload = {
-        "chatDate": chat_date,
-        "chats": [
-            {
-                "senderName": msg.sender,
-                "chatDateTime": msg.chat_date_time,
-                "content": msg.content,
-                "senderAddress": msg.sender_address
-            } for msg in messages
-        ]
-    }
-    return post(CHAT_ENDPOINT, params=None, payload=payload)
-
 def check_status(chat_date):
     params = {
         "date": chat_date
     }
-    count = get(CHECK_ENDPOINT, params=params)
+    count = get("/api/v1/bond/price/status", params=params)
     return count
+    
+def get_offset_map(chat_date):
+    params = {
+        "date": chat_date
+    }
+    from collections import defaultdict
+    offsets = get("/api/v1/chat/offset", params=params)
+    offset_map = defaultdict(int)
+    for data in offsets.get('offsets'):
+        fileName = data.get('fileName')
+        offset = data.get('offset')
+        offset_map[fileName] = offset
+    return offset_map
+    
+def append_chat_log(chat_date, chat_log_infos):
+    payload = {
+        "chatDate": chat_date,
+        "chatLogs": chat_log_infos
+        
+    }
+    post("/api/v1/chat/recent", params=None, payload=payload)
     

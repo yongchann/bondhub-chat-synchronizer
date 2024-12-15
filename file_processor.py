@@ -1,48 +1,25 @@
 import os
 from unicodedata import normalize
 import logging
-from chat_processor import process_chat_lines
-
 logger = logging.getLogger(__name__)
-
-# 파일 처리 관련 설정
-FILE_ENCODING = 'euc-kr'
-FILE_PREFIX_FORMAT = "{prefix}_{date}"
 
 def read_file_content(filename):
     try:
-        with open(filename, 'r', encoding=FILE_ENCODING, errors='ignore') as file:
+        with open(filename, 'r', encoding='euc-kr', errors='ignore') as file:
             return file.readlines()
     except Exception as e:
         logger.error(f"파일 읽기 오류 ({filename}): {str(e)}")
         return []
 
-def process_file(filename, prefix, current_offset, chat_date):
-    lines = read_file_content(filename)
-    new_lines = lines[current_offset:]
-    new_messages = process_chat_lines(new_lines, chat_date)
-    new_offset = len(lines)
-    return new_messages, new_offset, current_offset  # 현재 오프셋도 반환
-
-def process_files(offsets, chat_date):
-    fileDate = chat_date.replace('-', '')
-    file_prefixes = [
-        normalize('NFC', FILE_PREFIX_FORMAT.format(prefix=prefix, date=fileDate))
-        for prefix in ["채권_블커본드", "채권_레드본드", "채권_막무가내"]
-    ]
-    
-    all_new_messages = {}
-    file_offsets = {}  # 파일별 오프셋 정보를 임시 저장
-    
+def find_target_file_names(prefixes):
+    target_files = []
     for filename in os.listdir('.'):
         normalized_filename = normalize('NFC', filename)
-        for prefix in file_prefixes:
+        for prefix in prefixes:
             if normalized_filename.startswith(prefix) and normalized_filename.endswith('.txt'):
-                current_offset = offsets.get(prefix, 0)
-                new_messages, new_offset, curr_offset = process_file(filename, prefix, current_offset, chat_date)
-                if new_messages:
-                    all_new_messages[normalized_filename] = new_messages
-                    file_offsets[prefix] = (new_offset, curr_offset)  # 새 오프셋과 현재 오프셋을 저장
-                    logger.info(f"{normalized_filename}에서 {len(new_messages)}개의 새 메시지를 발견했습니다.")
-    
-    return all_new_messages, file_offsets
+                target_files.append(filename)
+    return target_files
+
+def get_new_chat_logs(file_name, offset):
+    lines = read_file_content(file_name)
+    return lines[offset:]

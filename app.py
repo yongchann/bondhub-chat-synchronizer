@@ -1,9 +1,8 @@
 import logging
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QLineEdit, QCalendarWidget
 from PyQt5.QtCore import QTimer
-from api_client import login, append, check_status
-from file_processor import process_files
-from chat_processor import process_duplication
+from api_client import login, check_status, get_offset_map, append_chat_log
+from file_processor import find_target_file_names, get_new_chat_logs
 from config import MONITOR_INTERVAL
 import logging
 from datetime import datetime
@@ -16,7 +15,7 @@ class FileMonitorApp(QWidget):
         self.initUI()
         self.offsets = {}
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.check_files)
+        self.timer.timeout.connect(self.synchronize_chat)
 
     def initUI(self):
         self.setWindowTitle('BondHub Chat Synchronizer')
@@ -32,7 +31,7 @@ class FileMonitorApp(QWidget):
         self.password_input.setPlaceholderText('Password')
         self.password_input.setEchoMode(QLineEdit.Password)
         self.login_button = QPushButton('Login', self)
-        self.login_button.clicked.connect(self.login)
+        self.login_button.clicked.connect(self.handle_login)
 
         login_layout.addWidget(self.username_input)
         login_layout.addWidget(self.password_input)
@@ -48,38 +47,40 @@ class FileMonitorApp(QWidget):
         layout.addWidget(self.calendar)
 
         # 시작/정지 버튼
-        self.toggle_button = QPushButton('RUN!', self)
-        self.toggle_button.clicked.connect(self.toggle_monitoring)
-        self.toggle_button.setEnabled(False)
-        layout.addWidget(self.toggle_button)
+        self.run_button = QPushButton('RUN!', self)
+        self.run_button.clicked.connect(self.handle_run)
+        self.run_button.setEnabled(False)
+        layout.addWidget(self.run_button)
 
-        self.setLayout(layout)
         # 로그 출력 영역
         self.log_area = QTextEdit(self)
         self.log_area.setReadOnly(True)
         layout.addWidget(self.log_area)
+        
+        self.setLayout(layout)
+        
 
-
-    def login(self):
+    def handle_login(self):
         username = self.username_input.text()
         password = self.password_input.text()
         if username and password:
             result = login(username, password)
             if result:
                 self.status_label.setText("Press RUN!")
-                self.toggle_button.setEnabled(True)
+                self.run_button.setEnabled(True)
             else:
                 self.status_label.setText("Login Failed.")
 
-    def toggle_monitoring(self):
+    def handle_run(self):
         if self.timer.isActive():
             self.timer.stop()
-            self.toggle_button.setText('RUN!')
+            self.run_button.setText('RUN!')
             self.status_label.setText('stopped...')
-        elif self.check_status():
-                self.check_files()
+        # elif self.check_status():
+        elif True:
+                self.synchronize_chat()
                 self.timer.start(MONITOR_INTERVAL)
-                self.toggle_button.setText('Stop Running')
+                self.run_button.setText('Stop Running')
                 self.status_label.setText('running...')
 
     def check_status(self):
@@ -91,27 +92,26 @@ class FileMonitorApp(QWidget):
             return False
         return True
 
-    def check_files(self):
+    def synchronize_chat(self):
         self.log_area.append(f"================================{datetime.now().strftime('%Y-%m-%d %H시 %M분 %S초')}================================\n")
         
         chat_date = self.calendar.selectedDate().toString("yyyy-MM-dd")
+        target_prefixes = [f"{room_name}_{chat_date.replace('-', '')}" for room_name in ["채권_블커본드", "채권_레드본드", "채권_막무가내"]]
+        file_names = find_target_file_names(target_prefixes)
+        offset_map = get_offset_map(chat_date)
         
-        new_chats, file_offsets = process_files(self.offsets, chat_date)
-        if new_chats:
-            entire_chats = [msg for msgs in new_chats.values() for msg in msgs]
-            distinct_chats = process_duplication(entire_chats)
-            # API 호출 및 성공 여부에 따른 오프셋 업데이트
-            try:
-                append(chat_date, distinct_chats)
-                # API 호출이 성공한 경우에만 오프셋 업데이트
-                for prefix, (new_offset, _) in file_offsets.items():
-                    self.offsets[prefix] = new_offset
-                    
-                for filename, chats in new_chats.items():
-                    if chats:
-                        self.log_area.append(f"✅ {filename} 파일의 ({chats[-1].chat_date_time}) 에 생성된 채팅까지 업데이트 되었습니다.\n{chats[-1].content}\n")
-            except Exception as e:
-                logger.error(f"API 호출 실패로 오프셋이 업데이트되지 않았습니다: {str(e)}")
-                self.log_area.append(f"❌ API 호출 실패로 오프셋이 업데이트되지 않았습니다: {str(e)}\n")
-        else:
-            self.log_area.append(f"💬 새 메시지가 없습니다.\n")
+        chat_log_infos = []
+        for file_name in file_names:
+            offset = offset_map[file_name]
+            chat_log = get_new_chat_logs(file_name, offset)
+            if chat_log:
+                chat_log_infos.append({
+                    "baseDate": chat_date,
+                    "fileName": file_name,
+                    "content": chat_log,
+                    "offset": offset
+                })
+        
+        append_chat_log(chat_date, chat_log_infos)
+        
+        
