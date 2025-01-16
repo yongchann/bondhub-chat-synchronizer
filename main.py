@@ -1,12 +1,14 @@
 import sys
 from PyQt5.QtWidgets import QApplication
-from app import FileMonitorApp
+from main_window import BondHubAppender
 from log_config import setup_logging
 
-if __name__ == '__main__':
-    logger = setup_logging()
-    logger.info("BondHub Chat Synchronizer start")
+def main():
+    setup_logging()
     app = QApplication(sys.argv)
-    ex = FileMonitorApp()
-    ex.show()
+    window = BondHubAppender()
+    window.show()
     sys.exit(app.exec_())
+
+if __name__ == "__main__":
+    main()
