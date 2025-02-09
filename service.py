@@ -1,71 +1,52 @@
-from api_client import APIClient
 import logging
+from api_client import apiClient
 
 logger = logging.getLogger(__name__)
 
-api_client = APIClient()
-
-def authenticate(username, password):
-    """사용자 인증 및 로그인 처리"""
-    if not (username and password):
-        return False, "아이디와 패스워드를 입력해주세요."
-    
-    try:
-        response = api_client.request('POST', "/api/v1/login", 
-                                    payload={"username": username, "password": password})
-        
-        if not response or not response.get('token'):
-            return False, "로그인에 실패했습니다. 아이디와 패스워드를 확인해주세요."
-            
-        api_client.set_token(response['token'])
-        return True, "로그인에 성공했습니다."
-        
-    except Exception as e:
-        logger.error(f"로그인 중 오류 발생: {str(e)}")
-        return False, "로그인 처리 중 오류가 발생했습니다."
-
-def validate_monitoring_date(selected_date):
-    """모니터링 날짜 유효성 검증"""
-    try:
-        params = {
-            "date": selected_date
-        }
-        result = api_client.request('GET', "/api/v1/bond/price/status", params=params)
-        
-        if result is None or result < 1:
-            logger.info(f"{selected_date} 일자의 채권 가격을 먼저 업로드 해주세요.")
-            return False
-        return True
-        
-    except Exception as e:
-        logger.error(f"모니터링 날짜 검증 중 오류 발생: {str(e)}")
+def login(username, password):
+    if not username or not password:
         return False
-
-def append(chat_date, messages):
-    """채팅 메시지 추가"""
-    payload = {
-        "chatDate": chat_date,
-        "chats": [
-            {
-                "senderName": msg.sender,
-                "chatDateTime": msg.chat_date_time,
-                "content": msg.content,
-                "senderAddress": msg.sender_address
-            } for msg in messages
-        ]
+    body = {
+        "username": username,
+        "password": password
     }
-    return api_client.request('POST', "/api/v1/chat/recent", payload=payload)
+    try:
+        result = apiClient.post('/api/v1/login', params=None, body=body)
+        token = result.get('token')
+        apiClient.set_token(token)
+        return True
+    except Exception as e:
+        logger.error("login error", e)
+        raise Exception("로그인 실패")
 
-def append_log(chat_date, file_name, offset, line_count, log):
-    """로그 추가"""
-    payload = {
-        "baseDate": chat_date,
+def get_bond_setting(base_date):
+    try:
+        params = {  
+            'date': base_date
+        }
+        result = apiClient.get('/api/v1/bond/setting', params=params)
+        logger.info("bond setting summary below")
+        logger.info(f"- normal bond count: {result.get('countByStatus').get('OK')}")
+        logger.info(f"- discarded bond count: {result.get('countByStatus').get('DISCARDED')}")
+        for i in range(len(result.get('ktbBenchmarks'))):
+            logger.info(f"- {i+1}th ktb benchmark: {result.get('ktbBenchmarks')[i]}")
+            
+        return result
+    except Exception as e:
+        logger.error(f"bond setting of {base_date} get error", e)
+        raise Exception("채권 기준정보 조회 실패")
+
+def append_log(base_date, file_name, offset, logs):
+    body = {
+        "baseDate": base_date,
         "fileName": file_name,
         "offset": offset,
-        "lineCount": line_count,
-        "log": log
+        "logs": logs
     }
-    response = api_client.request('POST', "/api/v1/chat/log", payload=payload)
-    if response is None:
-        raise Exception("Failed to send log to server.")
-    return response
+    try:    
+        result = apiClient.post('/api/v1/chat/log', params=None, body=body)
+        current_offset = result.get('currentOffset')
+        return current_offset
+    except Exception as e:
+        logger.error(f"log synchronization failed - file: {file_name}, offset: {offset}, error: {str(e)}")
+        raise Exception("로그 동기화 실패")

@@ -1,27 +1,15 @@
-import sys
-import logging
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLabel, QLineEdit, QMessageBox, QCalendarWidget, QGroupBox, QApplication
 from PyQt5.QtCore import QDate, Qt, QThread
 from file_monitor import MonitoringProcessor
-from service import authenticate
-from api_client import AuthenticationRequired
+from service import login, get_bond_setting
 from datetime import datetime
+import logging
 
 logger = logging.getLogger(__name__)
 
-def global_exception_handler(exctype, value, traceback):
-    if exctype == AuthenticationRequired:
-        active_window = QApplication.activeWindow()
-        if active_window:
-            active_window.showLoginDialog()
-    else:
-        sys.__excepthook__(exctype, value, traceback)
-
-sys.excepthook = global_exception_handler
-
-class BondHubAppender(QWidget):
-    WINDOW_TITLE = 'BondHub'
-    WINDOW_GEOMETRY = (100, 100, 900, 700)
+class BondHubChatSynchronizer(QWidget):
+    WINDOW_TITLE = 'BondHub Chat Synchronizer'
+    WINDOW_GEOMETRY = (100, 100, 1200, 800)
 
     def __init__(self):
         super().__init__()
@@ -29,7 +17,8 @@ class BondHubAppender(QWidget):
         self.monitoring_processor = None
         self.monitoring_thread = None
         self.initUI()
-        logger.info(f"BondHubAppender initialized with date: {self.selected_date}")
+        self.setupGlobalExceptionHandler()
+        logger.info("initialization completed")
 
     def initUI(self):
         self.setWindowTitle(self.WINDOW_TITLE)
@@ -93,13 +82,13 @@ class BondHubAppender(QWidget):
         return wrapper_layout
 
     def initControlSection(self):
-        control_group = QGroupBox("조작 영역")
+        control_group = QGroupBox("")
         control_layout = QHBoxLayout()
         
         self.prepare_button = self.createButton('모니터링 준비', self.handlePrepare)
         control_layout.addWidget(self.prepare_button)
         
-        self.run_button = self.createButton('모니터링 실행', self.handleRunMonitoring)
+        self.run_button = self.createButton('모니터링 시작', self.handleRunMonitoring)
         self.run_button.setEnabled(False)
         control_layout.addWidget(self.run_button)
         
@@ -112,7 +101,7 @@ class BondHubAppender(QWidget):
     def initStatusSection(self):
         status_layout = QHBoxLayout()
         
-        files_group = QGroupBox("모니터링 현황")
+        files_group = QGroupBox("파일 동기화 현황")
         files_layout = QVBoxLayout()
         self.files_area = QTextEdit(self)
         self.files_area.setReadOnly(True)
@@ -134,27 +123,31 @@ class BondHubAppender(QWidget):
     def handleLogin(self):
         username = self.username_input.text()
         password = self.password_input.text()
-        
-        success, message = authenticate(username, password)
-        
+        if not username or not password:
+            QMessageBox.warning(self, "Login Error", "아이디 또는 비밀번호를 입력해주세요.")
+            return
+    
+        success = login(username, password)
         if success:
-            logger.info(f"{username}님, 안녕하세요")
             self.status_label.setText(f"{username}님, 안녕하세요")
             self.login_button.hide()
             self.username_input.hide()
             self.password_input.hide()
+            logger.info(f"login success: username: {username}")
         else:
-            QMessageBox.warning(self, "Login Error", message)
-
+            QMessageBox.warning(self, "Login Error", "아이디 또는 비밀번호가 틀렸습니다.")
+            logger.error(f"login failed: username: {username} password: {password}")
+            
     def handleRunMonitoring(self):
         if self.monitoring_processor and self.monitoring_processor.running:
+            logger.info("monitoring stop button clicked")
             self.log("모니터링 중단")
             self.monitoring_processor.stop()
             self.monitoring_thread.quit()
             self.monitoring_thread.wait()
             self.run_button.setText('모니터링 재시작')
-            self.log_area.append("모니터링이 중단되었습니다.")
         else:
+            logger.info("monitoring start button clicked")
             self.log("모니터링 시작")
             self.monitoring_processor = MonitoringProcessor(self.selected_date)
             self.monitoring_thread = QThread()
@@ -163,25 +156,39 @@ class BondHubAppender(QWidget):
             self.monitoring_thread.started.connect(self.monitoring_processor.start)
             self.monitoring_thread.start()
             self.run_button.setText('모니터링 중단')
-
+            
     def updateMonitoringStatus(self, result):
         self.files_area.clear()
         scan_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        self.files_area.append(f"스캔시각: {scan_time}\n")
+        self.files_area.append(f"[기준시각]: {scan_time}\n")
         
-        for _, (file_name, data) in enumerate(result.items(), start=1):
+        for idx, (file_name, data) in enumerate(result.items(), start=1):
             offset = data['offset']
-            self.files_area.append(f"파일명: {file_name}\n오프셋: {offset}\n--------------------------------")
+            self.files_area.append(f"[{idx}] {file_name}\n > {offset} lines processed\n\n")
 
     def handlePrepare(self):
-        self.log("모니터링 준비 완료")
-        self.run_button.setEnabled(True)
-
+        setting = get_bond_setting(self.selected_date)
+        ok_count = setting.get("countByStatus").get("OK")
+        discarded_count = setting.get("countByStatus").get("DISCARDED")
+        ktb_benchmarks = setting.get("ktbBenchmarks")
+        ktb_str = '\n'.join([f"{info.get('benchmarkType')[1:]}년 - {info.get('code')}({info.get('bondName')[13:-1]}) " for info in ktb_benchmarks])
+        
+        if not ok_count or not discarded_count or not ktb_benchmarks:
+            QMessageBox.warning(self, "채권 상태", f"{self.selected_date} 채권 기준정보 \n\n[크레딧]\n정상 크레딧: {ok_count if ok_count else 0}\n제외 크레딧: {discarded_count if discarded_count else 0}\n\n[국고 지표]\n{ktb_str}")
+            self.run_button.setEnabled(False)
+            self.log(f"모니터링 시작 불가. {self.selected_date} 의 채권 기준정보가 없습니다.")
+            logger.error(f"monitoring start failed. {self.selected_date} 의 채권 기준정보가 없습니다.")
+        else:
+            QMessageBox.information(self, "채권 상태", f"{self.selected_date} 채권 기준정보 \n\n[크레딧]\n정상 크레딧: {ok_count}\n제외 크레딧: {discarded_count}\n\n[국고 지표]\n{ktb_str}")
+            self.run_button.setEnabled(True)
+            self.log(f"모니터링 준비 완료. 모니터링 시작 버튼을 누르세요")
+            logger.info(f"monitoring prepare success: {self.selected_date}")
     def updateSelectedDate(self):
         selected_date = self.calendar.selectedDate()
         self.selected_date = selected_date.toString('yyyy-MM-dd')
         self.date_label.setText(self.selected_date)
         self.calendar.hide()
+        self.log(f"날짜를 변경했습니다: {self.selected_date}")
 
     def showCalendarAtLabel(self):
         pos = self.date_label.mapToGlobal(self.date_label.rect().bottomLeft())
@@ -193,7 +200,6 @@ class BondHubAppender(QWidget):
         self.password_input.show()
         self.login_button.show()
         self.status_label.setText("")
-        QMessageBox.information(self, "인증 실패", "로그인 ")
 
     def createLineEdit(self, placeholder, width=None, echo_mode=QLineEdit.Normal):
         line_edit = QLineEdit(self)
@@ -213,8 +219,31 @@ class BondHubAppender(QWidget):
 
     def log(self, message: str, level: str = 'INFO'):
         current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        formatted_message = f"[{current_time}] [{level}] {message}"
+        formatted_message = f"[{level}] {current_time} : {message}\n-----------------------------------------------------------------------------------------"
         self.log_area.append(formatted_message)
         
         scrollbar = self.log_area.verticalScrollBar()
-        scrollbar.setValue(scrollbar.maximum()) 
+        scrollbar.setValue(scrollbar.maximum())
+
+    def setupGlobalExceptionHandler(self):
+        import sys
+        sys._excepthook = sys.excepthook
+        def exception_hook(exctype, value, traceback):
+            sys._excepthook(exctype, value, traceback)
+            self.handleGlobalException(exctype, value, traceback)
+        sys.excepthook = exception_hook
+
+    def handleGlobalException(self, exctype, value, traceback):
+        from api_client import AuthenticationRequired
+        
+        error_message = str(value)
+        error_position = traceback.tb_frame.f_code.co_name
+        error_line = traceback.tb_lineno
+        title = "오류"
+        
+        if isinstance(value, AuthenticationRequired):
+            title = "인증 오류"
+            self.showLoginDialog()
+        
+        QMessageBox.warning(self, title, error_message)
+        self.log(f"\nMESSAGE: {error_message}\nPOSITION: {error_position}:{error_line}", level='ERROR') 

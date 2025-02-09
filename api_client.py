@@ -5,10 +5,6 @@ from config import API_BASE_URL
 
 logger = logging.getLogger(__name__)
 
-class AuthenticationRequired(Exception):
-    """인증이 필요한 경우 발생하는 예외"""
-    pass
-
 class APIClient:
     def __init__(self):
         self.token = ""
@@ -16,39 +12,50 @@ class APIClient:
     def set_token(self, token):
         self.token = token
 
-    def get_headers(self):
-        return {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.token}"
-        }
+    def get(self, url, params=None):
+        return self._request('GET', url, params=params)
 
-    def build_url(self, endpoint):
-        return f"{API_BASE_URL}{endpoint}"
+    def post(self, url, params=None, body=None): 
+        return self._request('POST', url, params=params, body=body)
 
-    def request(self, method, url, params=None, payload=None):
+    def _request(self, method, url, params=None, body=None):
         try:
-            full_url = self.build_url(url)
             if method == 'GET':
-                response = requests.get(full_url, headers=self.get_headers(), params=params)
+                headers = {"Content-Type": "application/json","Authorization": f"Bearer {self.token}"}
+                response = requests.get(f"{API_BASE_URL}{url}", headers=headers, params=params)
             elif method == 'POST':
-                response = requests.post(full_url, headers=self.get_headers(), params=params, data=json.dumps(payload))
+                headers = {"Content-Type": "application/json","Authorization": f"Bearer {self.token}"}
+                response = requests.post(f"{API_BASE_URL}{url}", headers=headers, params=params, data=json.dumps(body))
             else:
-                raise ValueError("Unsupported HTTP method")
-            
-            # 401 응답 처리
-            if response.status_code == 401:
-                logger.error("인증이 필요합니다. 다시 로그인해주세요.")
-                raise AuthenticationRequired("인증이 필요합니다. 다시 로그인해주세요.")
-            
-            response.raise_for_status()
-            result = response.json()
-            
-            if result.get("success"):
-                return result.get("data")
-            else:
-                logger.error(f"요청 실패: {str(result.get('errorCode'))}")
-                raise Exception(f"요청 실패: {str(result.get('errorCode'))}")
+                raise ValueError(f"Invalid method: {method}")
+            self.handle_response_error(response)
+            return response.json().get("data")
+        
         except requests.exceptions.RequestException as e:
             logger.error(f"{method} 요청 실패: {str(e)}")
-            raise Exception(f"요청 실패: {str(e)}")
-    
+            raise Exception(f"{method} 요청 실패: {str(e)}")
+
+    def handle_response_error(self, response):
+        if response.status_code == 400:
+            logger.error("잘못된 요청입니다.")
+            raise Exception("잘못된 요청입니다.")
+        elif response.status_code == 401:
+            logger.error("인증이 필요합니다. 다시 로그인해주세요.")
+            raise Exception("인증이 필요합니다. 다시 로그인해주세요.")
+        elif response.status_code == 403:
+            logger.error("권한이 없습니다.")
+            raise Exception("권한이 없습니다.")
+        elif response.status_code == 404:
+            logger.error("요청한 리소스가 존재하지 않습니다.")
+            raise Exception("요청한 리소스가 존재하지 않습니다.")
+        elif response.status_code == 405:
+            logger.error("요청한 메서드가 허용되지 않습니다.")
+            raise Exception("요청한 메서드가 허용되지 않습니다.")
+        elif response.status_code == 429:
+            logger.error("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
+            raise Exception("요청이 너무 많습니다. 잠시 후 다시 시도해주세요.")
+        elif response.status_code == 500:
+            logger.error("서버 오류가 발생했습니다.")
+            raise Exception("서버 오류가 발생했습니다.")
+
+apiClient = APIClient()
