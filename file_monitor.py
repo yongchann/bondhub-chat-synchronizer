@@ -38,7 +38,7 @@ class MonitoringProcessor(QObject):
     def scan_files(self):
         for file_name in os.listdir('.'):
             normalized_file_name = unicodedata.normalize('NFC', file_name)
-            if normalized_file_name.endswith('.txt'):
+            if normalized_file_name.endswith('.txt') and any(keyword in normalized_file_name for keyword in ['블커본드', '막무가내', '레드본드']):
                 parts = normalized_file_name.split('_')
                 if len(parts) > 2 and parts[2] == self.selected_date.replace('-', ''):
                     if normalized_file_name not in self.files:
