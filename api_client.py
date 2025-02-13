@@ -22,10 +22,10 @@ class APIClient:
         try:
             if method == 'GET':
                 headers = {"Content-Type": "application/json","Authorization": f"Bearer {self.token}"}
-                response = requests.get(f"{API_BASE_URL}{url}", headers=headers, params=params)
+                response = requests.get(f"{API_BASE_URL}{url}", verify=False, headers=headers, params=params)
             elif method == 'POST':
                 headers = {"Content-Type": "application/json","Authorization": f"Bearer {self.token}"}
-                response = requests.post(f"{API_BASE_URL}{url}", headers=headers, params=params, data=json.dumps(body))
+                response = requests.post(f"{API_BASE_URL}{url}", verify=False, headers=headers, params=params, data=json.dumps(body))
             else:
                 raise ValueError(f"Invalid method: {method}")
             self.handle_response_error(response)
